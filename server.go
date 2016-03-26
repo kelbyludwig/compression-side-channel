@@ -6,8 +6,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 )
+
+var INTMAX int = 2147483647
 
 func CTREncrypt(plaintext []byte) (ciphertext []byte, err error) {
 
@@ -65,28 +68,48 @@ func FormatRequest(payload string) (request string) {
 	return request
 }
 
-func IsValidBase64() bool {
-	return false
+func IsValidBase64(input string) bool {
+	if len(input) == 0 {
+		return false
+	}
+	_, err := base64.StdEncoding.DecodeString(input)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func Attack() {
 
+	knowPrefix := "sessionid="
 	//The target cookie name is known data.
-	knownData := "sessionid="
+	knownData := knowPrefix
 	//The target cookie value is base64 encoded data.
-	characterSet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	characterSet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
 
-	lastGuessSize := CompressionOracle(knownData)
-	fmt.Printf("Starting attack. Baseline request size is %d\n", lastGuessSize)
+	fmt.Printf("Starting attack.\n")
 	fmt.Printf("Known data: %s", knownData)
-	for i := 0; i < len(characterSet); i++ {
-		guess := string(characterSet[i])
-		guessSize := CompressionOracle(knownData + guess)
-		if guessSize < lastGuessSize {
-			fmt.Printf("%s", guess)
-			knownData += guess
+
+	for !IsValidBase64(knownData[len(knowPrefix):]) {
+		smallestGuessSize := INTMAX
+		smallestGuess := "\x00"
+		for i := 0; i < len(characterSet); i++ {
+			guess := string(characterSet[i])
+			guessSize := CompressionOracle(knownData + guess)
+			if guessSize < smallestGuessSize {
+				smallestGuess = guess
+				smallestGuessSize = guessSize
+			}
+		}
+
+		if smallestGuessSize == INTMAX {
+			fmt.Printf("\nThere was an error.\n")
+		} else {
+			knownData += smallestGuess
+			fmt.Printf("%s", smallestGuess)
 		}
 	}
+	fmt.Printf("\n")
 }
 
 func main() {
