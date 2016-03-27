@@ -6,7 +6,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 )
 
@@ -68,20 +67,20 @@ func FormatRequest(payload string) (request string) {
 	return request
 }
 
-func IsValidBase64(input string) bool {
-	if len(input) == 0 {
+//IsValidToken simulates an request with a token. If the token is valid, we expect an "authenticated" response.
+func IsValidToken(input string) bool {
+	token := "TmV2ZXIgcmV2ZWFsIHRoZSBXdS1UYW5nIFNlY3JldCE="
+	if input == token {
+		fmt.Printf("\nYay! You got the token!\n")
+		return true
+	} else {
 		return false
 	}
-	_, err := base64.StdEncoding.DecodeString(input)
-	if err != nil {
-		return false
-	}
-	return true
 }
 
 func Attack() {
 
-	knowPrefix := "sessionid="
+	knowPrefix := "Cookie: sessionid="
 	//The target cookie name is known data.
 	knownData := knowPrefix
 	//The target cookie value is base64 encoded data.
@@ -90,28 +89,44 @@ func Attack() {
 	fmt.Printf("Starting attack.\n")
 	fmt.Printf("Known data: %s", knownData)
 
-	for !IsValidBase64(knownData[len(knowPrefix):]) {
+	for !IsValidToken(knownData[len(knowPrefix):]) {
+
 		smallestGuessSize := INTMAX
-		smallestGuess := "\x00"
+		smallestGuesses := make([]string, 0)
+
 		for i := 0; i < len(characterSet); i++ {
+
 			guess := string(characterSet[i])
 			guessSize := CompressionOracle(knownData + guess)
+
 			if guessSize < smallestGuessSize {
-				smallestGuess = guess
+				smallestGuesses = []string{guess}
 				smallestGuessSize = guessSize
+				continue
+			}
+
+			if guessSize == smallestGuessSize {
+				smallestGuesses = append(smallestGuesses, guess)
+				smallestGuessSize = guessSize
+				continue
 			}
 		}
 
-		if smallestGuessSize == INTMAX {
+		if smallestGuessSize == INTMAX || len(smallestGuesses) == 0 {
 			fmt.Printf("\nThere was an error.\n")
-		} else {
-			knownData += smallestGuess
-			fmt.Printf("%s", smallestGuess)
+			return
 		}
+
+		if len(smallestGuesses) == 1 {
+			knownData += smallestGuesses[0]
+			fmt.Printf("%s", smallestGuesses[0])
+			continue
+		}
+
 	}
-	fmt.Printf("\n")
 }
 
 func main() {
 	Attack()
+	//TODO: Attack() can be optimized. You can do a binary search over the alphabet and learn 1 byte in 6 requests.
 }
