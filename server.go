@@ -78,7 +78,7 @@ func IsValidToken(input string) bool {
 	}
 }
 
-func Attack() {
+func NaiveAttack() {
 
 	knowPrefix := "Cookie: sessionid="
 	//The target cookie name is known data.
@@ -123,10 +123,30 @@ func Attack() {
 			continue
 		}
 
+		smallestGuessSize = INTMAX
+		smallestGuess := "\x00"
+		for _, guess := range smallestGuesses {
+			multipleGuesses := ""
+			for x := 0; x < 8; x++ {
+				multipleGuesses += (knownData + guess)
+			}
+			guessSize := CompressionOracle(multipleGuesses)
+			if guessSize < smallestGuessSize {
+				smallestGuess = guess
+				smallestGuessSize = guessSize
+			}
+		}
+		fmt.Printf("%s", smallestGuess)
+
 	}
 }
 
+func BinarySearchAtttack() {
+
+}
+
 func main() {
-	Attack()
-	//TODO: Attack() can be optimized. You can do a binary search over the alphabet and learn 1 byte in 6 requests.
+	NaiveAttack()
+	//TODO: NaiveAttack() can be optimized. You can do a binary search over the alphabet and learn 1 byte in 12 requests.
+	//TODO: BinarySearchAtttack can be optimized too.
 }
